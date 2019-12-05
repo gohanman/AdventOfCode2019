@@ -23,12 +23,10 @@ type ParamMode
 init: String -> Computer
 init str =
     let
-        infinity = -2^31
         ic = String.split "," str
             |> List.map String.trim
             |> List.map String.toInt
-            |> List.map (Maybe.withDefault infinity)
-            |> List.filter (\i -> i > infinity)
+            |> List.filterMap identity
             |> Array.fromList
     in
         Computer ic 0 [] ""
