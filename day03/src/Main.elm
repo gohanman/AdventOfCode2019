@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Browser
 import Dict exposing (Dict)
+import Set exposing (Set)
 import Html exposing (Html, input, div, text, textarea, h3, button, pre)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
@@ -208,6 +209,51 @@ closest origin grid =
     |> List.minimum
     |> Maybe.withDefault 0
 
+close2 : Point -> Model -> Int
+close2 origin model =
+    let
+        first = List.head model.wires
+            |> Maybe.withDefault []
+            |> wireToPoints origin []
+            |> List.map (\i -> (i.x, i.y))
+            |> List.foldl (\i c -> Set.insert i c) Set.empty
+        _ = Debug.log "first" first
+        overlap = List.drop 1 model.wires
+            |> List.head
+            |> Maybe.withDefault []
+            |> wireToPoints origin []
+            |> List.map(\i -> (i.x, i.y))
+            |> List.filter (\i -> Set.member i first)
+            |> List.map (\i -> Point (Tuple.first i) (Tuple.second i))
+        _ = Debug.log "overlap" overlap
+    in
+        List.map (distance origin) overlap
+        |> List.minimum
+        |> Maybe.withDefault 0
+
+close3 : Point -> Model -> Int
+close3 origin model =
+    let
+        first = List.head model.wires
+            |> Maybe.withDefault []
+            |> wireToPoints origin []
+            |> List.indexedMap (\idx i -> ((i.x, i.y), idx))
+            |> List.foldl (\i c -> Dict.insert (Tuple.first i) (Tuple.second i) c) Dict.empty
+        _ = Debug.log "first" first
+        overlap = List.drop 1 model.wires
+            |> List.head
+            |> Maybe.withDefault []
+            |> wireToPoints origin []
+            |> List.indexedMap (\idx i -> ((i.x, i.y), idx))
+            |> List.filter (\i -> Dict.member (Tuple.first i) first)
+        _ = Debug.log "overlap" overlap
+    in
+        overlap |> List.map (\i ->
+                (Tuple.second i) + (Dict.get (Tuple.first i) first |> Maybe.withDefault 99999) + 2
+            )
+            |> List.minimum
+            |> Maybe.withDefault 0
+
 init : Model
 init =
     Model [] (Point 0 0) (Point 0 0) (Dict.empty)
@@ -225,7 +271,6 @@ update msg model =
                     |> List.map strToWire
             in
                 Model wires (Point 0 0) (Point 0 0) (Dict.empty)
-                    |> plot 0
         Draw ->
             model
 
@@ -236,7 +281,7 @@ view model =
             h3 [] [ text "Wires" ],
             textarea [ placeholder "wires", onInput Load] [],
             h3 [] [ text "Closest Overlap" ],
-            div [] [ text (String.fromInt (closest (Point 0 0) model.grid)) ],
+            div [] [ text (String.fromInt (close3 (Point 0 0) model)) ],
             h3 [] [ text "Diagram" ],
             div [ style "font-family" "monospace" ]
             [
